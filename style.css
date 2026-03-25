@@ -4,6 +4,7 @@
   --ui-bg: rgba(5, 13, 29, 0.55);
   --ui-border: rgba(255, 255, 255, 0.24);
   --bullet-size: 0.8rem;
+  --nav-size: 3rem;
 }
 
 * {
@@ -16,6 +17,7 @@ html,
 body {
   width: 100%;
   height: 100%;
+  min-height: 100%;
   overflow: hidden;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background: #000;
@@ -25,7 +27,9 @@ body {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   isolation: isolate;
+  touch-action: pan-y;
 }
 
 .slides {
@@ -47,6 +51,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   filter: saturate(1.05) contrast(1.03);
 }
 
@@ -68,8 +73,8 @@ body {
   top: 50%;
   transform: translateY(-50%);
   z-index: 4;
-  width: 3rem;
-  height: 3rem;
+  width: var(--nav-size);
+  height: var(--nav-size);
   border-radius: 999px;
   border: 1px solid var(--ui-border);
   background: var(--ui-bg);
@@ -91,17 +96,17 @@ body {
 }
 
 .nav-arrow--left {
-  left: 1rem;
+  left: calc(1rem + env(safe-area-inset-left));
 }
 
 .nav-arrow--right {
-  right: 1rem;
+  right: calc(1rem + env(safe-area-inset-right));
 }
 
 .bullets {
   position: absolute;
   left: 50%;
-  bottom: 1.25rem;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 4;
   display: flex;
@@ -134,23 +139,50 @@ body {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --nav-size: 2.5rem;
+    --bullet-size: 0.72rem;
+  }
+
   .nav-arrow {
-    width: 2.5rem;
-    height: 2.5rem;
+    display: none;
     font-size: 1.3rem;
   }
 
   .nav-arrow--left {
-    left: 0.65rem;
+    left: calc(0.65rem + env(safe-area-inset-left));
   }
 
   .nav-arrow--right {
-    right: 0.65rem;
+    right: calc(0.65rem + env(safe-area-inset-right));
   }
 
   .bullets {
-    bottom: 0.8rem;
+    bottom: calc(0.8rem + env(safe-area-inset-bottom));
     gap: 0.45rem;
     padding: 0.45rem 0.55rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .bullets {
+    max-width: calc(100vw - 1.4rem);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .bullets::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-arrow {
+    top: auto;
+    bottom: calc(3.85rem + env(safe-area-inset-bottom));
+    transform: none;
+  }
+
+  .nav-arrow:hover,
+  .nav-arrow:active {
+    transform: none;
   }
 }

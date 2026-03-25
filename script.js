@@ -3,6 +3,7 @@ const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
 const bulletsContainer = document.getElementById('bullets');
 const canvas = document.getElementById('particles');
+const slider = document.querySelector('.slider');
 const ctx = canvas.getContext('2d');
 
 let currentIndex = 0;
@@ -31,6 +32,9 @@ function goToSlide(index) {
 
   slides.forEach((slide, i) => {
     slide.classList.toggle('is-active', i === currentIndex);
+    slide.style.transform = '';
+    slide.style.opacity = '';
+    slide.style.transition = '';
   });
 
   renderBullets();
@@ -38,6 +42,148 @@ function goToSlide(index) {
 
 prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
 nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
+
+let touchStartX = 0;
+let touchCurrentX = 0;
+let touchRawDeltaX = 0;
+let touchPreviewDeltaX = 0;
+let isTouchDragging = false;
+let swipeInProgress = false;
+let previewTargetIndex = -1;
+
+function isMobileViewport() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function getWrappedIndex(index) {
+  return (index + slides.length) % slides.length;
+}
+
+function clearSlideInlineState() {
+  slides.forEach((slide) => {
+    slide.style.transition = '';
+    slide.style.transform = '';
+    slide.style.opacity = '';
+  });
+}
+
+function applySwipeResistance(deltaX) {
+  const sliderWidth = Math.max(slider.clientWidth, 1);
+  const softLimit = Math.max(90, sliderWidth * 0.18);
+  const absDelta = Math.abs(deltaX);
+
+  if (absDelta <= softLimit) {
+    return deltaX;
+  }
+
+  // Depois do limite, o deslocamento visual cresce mais devagar para dar efeito de resistência.
+  const resistedDelta = softLimit + (absDelta - softLimit) * 0.35;
+  return Math.sign(deltaX) * resistedDelta;
+}
+
+function updateTouchPreview(deltaX) {
+  const direction = deltaX < 0 ? 1 : -1;
+  const sliderWidth = Math.max(slider.clientWidth, 1);
+  const activeSlide = slides[currentIndex];
+  const targetIndex = getWrappedIndex(currentIndex + direction);
+  const targetSlide = slides[targetIndex];
+
+  previewTargetIndex = targetIndex;
+  targetSlide.classList.add('is-active');
+
+  activeSlide.style.transition = 'none';
+  targetSlide.style.transition = 'none';
+  activeSlide.style.opacity = '1';
+  targetSlide.style.opacity = '1';
+  activeSlide.style.transform = `translateX(${deltaX}px) scale(1)`;
+
+  const startOffset = direction > 0 ? sliderWidth : -sliderWidth;
+  targetSlide.style.transform = `translateX(${startOffset + deltaX}px) scale(1)`;
+}
+
+function finalizeSwipe(commitMove, direction, deltaX) {
+  if (previewTargetIndex < 0) return;
+
+  const sliderWidth = Math.max(slider.clientWidth, 1);
+  const activeSlide = slides[currentIndex];
+  const targetSlide = slides[previewTargetIndex];
+  const activeFinalX = commitMove ? (direction > 0 ? -sliderWidth : sliderWidth) : 0;
+  const targetStartX = direction > 0 ? sliderWidth + deltaX : -sliderWidth + deltaX;
+  const targetFinalX = commitMove ? 0 : targetStartX;
+
+  activeSlide.style.transition = 'transform 0.32s ease, opacity 0.32s ease';
+  targetSlide.style.transition = 'transform 0.32s ease, opacity 0.32s ease';
+
+  requestAnimationFrame(() => {
+    activeSlide.style.transform = `translateX(${activeFinalX}px) scale(1)`;
+    targetSlide.style.transform = `translateX(${targetFinalX}px) scale(1)`;
+  });
+
+  const finish = () => {
+    if (commitMove) {
+      currentIndex = previewTargetIndex;
+    }
+
+    slides.forEach((slide, index) => {
+      slide.classList.toggle('is-active', index === currentIndex);
+    });
+
+    clearSlideInlineState();
+    renderBullets();
+    previewTargetIndex = -1;
+    swipeInProgress = false;
+  };
+
+  let didFinish = false;
+  const safeFinish = () => {
+    if (didFinish) return;
+    didFinish = true;
+    finish();
+  };
+
+  activeSlide.addEventListener('transitionend', safeFinish, { once: true });
+  window.setTimeout(safeFinish, 380);
+}
+
+slider.addEventListener('touchstart', (event) => {
+  if (!isMobileViewport() || swipeInProgress || !event.touches.length) return;
+  touchStartX = event.touches[0].clientX;
+  touchCurrentX = touchStartX;
+  touchRawDeltaX = 0;
+  touchPreviewDeltaX = 0;
+  isTouchDragging = true;
+}, { passive: true });
+
+slider.addEventListener('touchmove', (event) => {
+  if (!isTouchDragging || !isMobileViewport() || !event.touches.length) return;
+
+  touchCurrentX = event.touches[0].clientX;
+  touchRawDeltaX = touchCurrentX - touchStartX;
+  if (Math.abs(touchRawDeltaX) < 5) return;
+
+  touchPreviewDeltaX = applySwipeResistance(touchRawDeltaX);
+  updateTouchPreview(touchPreviewDeltaX);
+}, { passive: true });
+
+slider.addEventListener('touchend', () => {
+  if (!isTouchDragging || !isMobileViewport() || swipeInProgress) return;
+
+  const sliderWidth = Math.max(slider.clientWidth, 1);
+  const threshold = Math.min(120, sliderWidth * 0.2);
+
+  isTouchDragging = false;
+
+  if (Math.abs(touchRawDeltaX) < 5) {
+    previewTargetIndex = -1;
+    clearSlideInlineState();
+    return;
+  }
+
+  const direction = touchRawDeltaX < 0 ? 1 : -1;
+  const commitMove = Math.abs(touchRawDeltaX) >= threshold;
+  swipeInProgress = true;
+  finalizeSwipe(commitMove, direction, touchPreviewDeltaX);
+});
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft') goToSlide(currentIndex - 1);
@@ -52,7 +198,8 @@ const pointer = {
   radius: 120
 };
 
-const particleCount = 90;
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const particleCount = prefersReducedMotion ? 30 : Math.min(90, Math.max(45, Math.floor(window.innerWidth / 14)));
 const particles = [];
 
 function resizeCanvas() {
@@ -121,6 +268,17 @@ canvas.addEventListener('mousemove', (event) => {
 });
 
 canvas.addEventListener('mouseleave', () => {
+  pointer.x = -1000;
+  pointer.y = -1000;
+});
+
+canvas.addEventListener('touchmove', (event) => {
+  if (!event.touches.length) return;
+  pointer.x = event.touches[0].clientX;
+  pointer.y = event.touches[0].clientY;
+}, { passive: true });
+
+canvas.addEventListener('touchend', () => {
   pointer.x = -1000;
   pointer.y = -1000;
 });
