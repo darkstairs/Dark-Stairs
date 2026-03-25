@@ -1,344 +1,205 @@
-const slidesContainer = document.getElementById('slides');
+const openCatalogBtn = document.getElementById('openCatalogBtn');
+const homeSection = document.getElementById('home');
+const catalogSection = document.getElementById('catalog');
+const slideImage = document.getElementById('slideImage');
+const counter = document.getElementById('counter');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
-const bulletsContainer = document.getElementById('bullets');
-const canvas = document.getElementById('particles');
-const slider = document.querySelector('.slider');
-const ctx = canvas.getContext('2d');
+const backBtn = document.getElementById('backBtn');
+const catalogStage = document.querySelector('.catalog__stage');
+const particlesCanvas = document.getElementById('catalogParticles');
+const particlesCtx = particlesCanvas.getContext('2d');
 
 const imageSets = {
-  desktop: ['1', '2', '3', '4', '5', '6', '7'],
-  mobile: ['a', 'b', 'c', 'd', 'e', 'f']
+  desktop: ['2', '3', '4', '5', '6', '7'],
+  mobile: ['b', 'c', 'd', 'e', 'f']
 };
 
 const mobileMediaQuery = window.matchMedia('(max-width: 768px)');
 let usingMobileSet = mobileMediaQuery.matches;
-let slides = [];
+let activeSet = usingMobileSet ? imageSets.mobile : imageSets.desktop;
 let currentIndex = 0;
-
-function isMobileViewport() {
-  return mobileMediaQuery.matches;
-}
-
-function getCurrentImageSet() {
-  return usingMobileSet ? imageSets.mobile : imageSets.desktop;
-}
-
-function buildSlides() {
-  const imageNames = getCurrentImageSet();
-  slidesContainer.innerHTML = '';
-
-  imageNames.forEach((imageName, index) => {
-    const section = document.createElement('section');
-    section.className = `slide ${index === currentIndex ? 'is-active' : ''}`;
-    section.setAttribute('aria-label', `Slide ${index + 1}`);
-
-    const img = document.createElement('img');
-    img.src = `./src/images/${imageName}.png`;
-    img.alt = `Imagem ${imageName.toUpperCase()}`;
-    img.loading = index === 0 ? 'eager' : 'lazy';
-
-    section.appendChild(img);
-    slidesContainer.appendChild(section);
-  });
-
-  slides = Array.from(document.querySelectorAll('.slide'));
-}
-
-function adaptIndexToNewSet(previousLength, previousIndex) {
-  if (!previousLength || !slides.length) {
-    currentIndex = 0;
-    return;
-  }
-
-  if (previousLength === 1) {
-    currentIndex = 0;
-    return;
-  }
-
-  const ratio = previousIndex / (previousLength - 1);
-  currentIndex = Math.round(ratio * (slides.length - 1));
-}
-
-function rebuildSlidesForViewport(force = false) {
-  const nextUseMobileSet = isMobileViewport();
-
-  if (!force && nextUseMobileSet === usingMobileSet) {
-    return;
-  }
-
-  const previousLength = slides.length;
-  const previousIndex = currentIndex;
-
-  usingMobileSet = nextUseMobileSet;
-  buildSlides();
-  adaptIndexToNewSet(previousLength, previousIndex);
-  goToSlide(currentIndex);
-}
-
-function renderBullets() {
-  bulletsContainer.innerHTML = '';
-
-  slides.forEach((_, index) => {
-    const bullet = document.createElement('button');
-    bullet.className = `bullet ${index === currentIndex ? 'is-active' : ''}`;
-    bullet.type = 'button';
-    bullet.setAttribute('aria-label', `Ir para o slide ${index + 1}`);
-    bullet.setAttribute('role', 'tab');
-    bullet.setAttribute('aria-selected', index === currentIndex ? 'true' : 'false');
-
-    bullet.addEventListener('click', () => {
-      animateToSlide(index);
-    });
-
-    bulletsContainer.appendChild(bullet);
-  });
-}
-
-function resetSlidesState() {
-  slides.forEach((slide, i) => {
-    slide.style.transition = 'none';
-    slide.classList.toggle('is-active', i === currentIndex);
-    slide.style.transform = '';
-    slide.style.opacity = '';
-    slide.style.zIndex = '';
-  });
-}
-
-function goToSlide(index) {
-  if (!slides.length) return;
-  currentIndex = (index + slides.length) % slides.length;
-  resetSlidesState();
-  renderBullets();
-}
-
-function getShortestDirection(fromIndex, toIndex) {
-  const forwardDistance = (toIndex - fromIndex + slides.length) % slides.length;
-  const backwardDistance = (fromIndex - toIndex + slides.length) % slides.length;
-  return forwardDistance <= backwardDistance ? 1 : -1;
-}
-
-function animateToSlide(targetIndex, forcedDirection = 0) {
-  if (!slides.length || swipeInProgress) return;
-
-  const nextIndex = (targetIndex + slides.length) % slides.length;
-  if (nextIndex === currentIndex) return;
-
-  swipeInProgress = true;
-
-  const direction = forcedDirection || getShortestDirection(currentIndex, nextIndex);
-  const activeSlide = slides[currentIndex];
-  const targetSlide = slides[nextIndex];
-  const enterOffset = direction > 0 ? '34%' : '-34%';
-  const exitOffset = direction > 0 ? '-24%' : '24%';
-
-  slides.forEach((slide) => {
-    slide.style.transition = 'none';
-    slide.style.transform = '';
-    slide.style.opacity = '';
-    slide.style.zIndex = '';
-    if (slide !== activeSlide && slide !== targetSlide) {
-      slide.classList.remove('is-active');
-    }
-  });
-
-  activeSlide.classList.add('is-active');
-  targetSlide.classList.add('is-active');
-  activeSlide.style.zIndex = '2';
-  targetSlide.style.zIndex = '3';
-
-  activeSlide.style.transform = 'translateX(0) scale(1)';
-  activeSlide.style.opacity = '1';
-  targetSlide.style.transform = `translateX(${enterOffset}) scale(1.06)`;
-  targetSlide.style.opacity = '0.68';
-
-  requestAnimationFrame(() => {
-    const transition = 'transform 0.62s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.48s ease';
-    activeSlide.style.transition = transition;
-    targetSlide.style.transition = transition;
-
-    activeSlide.style.transform = `translateX(${exitOffset}) scale(0.94)`;
-    activeSlide.style.opacity = '0.35';
-    targetSlide.style.transform = 'translateX(0) scale(1)';
-    targetSlide.style.opacity = '1';
-  });
-
-  const finish = () => {
-    currentIndex = nextIndex;
-    resetSlidesState();
-    renderBullets();
-    swipeInProgress = false;
-  };
-
-  let didFinish = false;
-  const safeFinish = () => {
-    if (didFinish) return;
-    didFinish = true;
-    finish();
-  };
-
-  targetSlide.addEventListener('transitionend', safeFinish, { once: true });
-  window.setTimeout(safeFinish, 700);
-}
-
-prevBtn.addEventListener('click', () => {
-  if (slides.length > 1) animateToSlide(currentIndex - 1, -1);
-});
-
-nextBtn.addEventListener('click', () => {
-  if (slides.length > 1) animateToSlide(currentIndex + 1, 1);
-});
-
 let touchStartX = 0;
 let touchStartY = 0;
-let touchRawDeltaX = 0;
-let touchRawDeltaY = 0;
-let isTouchDragging = false;
+let touchDeltaX = 0;
+let touchDeltaY = 0;
+let isTouchTracking = false;
 let isHorizontalSwipe = false;
-let swipeInProgress = false;
 
-function getWrappedIndex(index) {
-  if (!slides.length) return 0;
-  return (index + slides.length) % slides.length;
+function updateSlide(direction = 0) {
+  const imageName = activeSet[currentIndex];
+  slideImage.src = `./src/images/${imageName}.png`;
+  slideImage.alt = `Imagem ${imageName.toUpperCase()}`;
+  counter.textContent = `${currentIndex + 1} / ${activeSet.length}`;
+
+  slideImage.classList.remove('slide-in-right', 'slide-in-left');
+  void slideImage.offsetWidth;
+
+  if (direction > 0) {
+    slideImage.classList.add('slide-in-right');
+  } else if (direction < 0) {
+    slideImage.classList.add('slide-in-left');
+  }
 }
 
-function applySwipeResistance(deltaX) {
-  const sliderWidth = Math.max(slider.clientWidth, 1);
-  const softLimit = Math.max(90, sliderWidth * 0.18);
-  const absDelta = Math.abs(deltaX);
+function goToNext() {
+  currentIndex = (currentIndex + 1) % activeSet.length;
+  updateSlide(1);
+}
 
-  if (absDelta <= softLimit) {
-    return deltaX;
+function goToPrev() {
+  currentIndex = (currentIndex - 1 + activeSet.length) % activeSet.length;
+  updateSlide(-1);
+}
+
+function switchSetForViewport() {
+  const nextUsingMobile = mobileMediaQuery.matches;
+  if (nextUsingMobile === usingMobileSet) return;
+
+  const previousLength = activeSet.length;
+  const previousIndex = currentIndex;
+
+  usingMobileSet = nextUsingMobile;
+  activeSet = usingMobileSet ? imageSets.mobile : imageSets.desktop;
+
+  if (previousLength <= 1 || activeSet.length <= 1) {
+    currentIndex = 0;
+  } else {
+    const ratio = previousIndex / (previousLength - 1);
+    currentIndex = Math.round(ratio * (activeSet.length - 1));
   }
 
-  // Depois do limite, o deslocamento visual cresce mais devagar para dar efeito de resistência.
-  const resistedDelta = softLimit + (absDelta - softLimit) * 0.35;
-  return Math.sign(deltaX) * resistedDelta;
+  updateSlide(0);
 }
 
-slider.addEventListener('touchstart', (event) => {
-  if (!isMobileViewport() || slides.length < 2 || swipeInProgress || !event.touches.length) return;
+openCatalogBtn.addEventListener('click', () => {
+  homeSection.classList.add('is-leaving');
+
+  window.setTimeout(() => {
+    homeSection.classList.add('is-hidden');
+    catalogSection.classList.add('is-active');
+  }, 560);
+});
+
+backBtn.addEventListener('click', () => {
+  catalogSection.classList.remove('is-active');
+  homeSection.classList.remove('is-hidden');
+
+  requestAnimationFrame(() => {
+    homeSection.classList.remove('is-leaving');
+  });
+});
+
+prevBtn.addEventListener('click', goToPrev);
+nextBtn.addEventListener('click', goToNext);
+
+document.addEventListener('keydown', (event) => {
+  if (!catalogSection.classList.contains('is-active')) return;
+  if (event.key === 'ArrowLeft') goToPrev();
+  if (event.key === 'ArrowRight') goToNext();
+});
+
+catalogStage.addEventListener('touchstart', (event) => {
+  if (!catalogSection.classList.contains('is-active') || !mobileMediaQuery.matches || !event.touches.length) return;
+
   touchStartX = event.touches[0].clientX;
   touchStartY = event.touches[0].clientY;
-  touchRawDeltaX = 0;
-  touchRawDeltaY = 0;
+  touchDeltaX = 0;
+  touchDeltaY = 0;
   isHorizontalSwipe = false;
-  isTouchDragging = true;
+  isTouchTracking = true;
 }, { passive: true });
 
-slider.addEventListener('touchmove', (event) => {
-  if (!isTouchDragging || slides.length < 2 || !isMobileViewport() || !event.touches.length) return;
+catalogStage.addEventListener('touchmove', (event) => {
+  if (!isTouchTracking || !mobileMediaQuery.matches || !event.touches.length) return;
 
-  const touchCurrentX = event.touches[0].clientX;
-  const touchCurrentY = event.touches[0].clientY;
-  touchRawDeltaX = touchCurrentX - touchStartX;
-  touchRawDeltaY = touchCurrentY - touchStartY;
+  touchDeltaX = event.touches[0].clientX - touchStartX;
+  touchDeltaY = event.touches[0].clientY - touchStartY;
 
   if (!isHorizontalSwipe) {
-    const absX = Math.abs(touchRawDeltaX);
-    const absY = Math.abs(touchRawDeltaY);
+    const absX = Math.abs(touchDeltaX);
+    const absY = Math.abs(touchDeltaY);
 
-    if (absX < 6 && absY < 6) {
-      return;
-    }
-
-    if (absX <= absY) {
-      return;
-    }
+    if (absX < 8 && absY < 8) return;
+    if (absX <= absY) return;
 
     isHorizontalSwipe = true;
   }
 
-  // Evita o gesto nativo de voltar/avançar da página durante o swipe horizontal do slider.
   event.preventDefault();
 }, { passive: false });
 
-slider.addEventListener('touchend', () => {
-  if (!isTouchDragging || slides.length < 2 || !isMobileViewport() || swipeInProgress) return;
+catalogStage.addEventListener('touchend', () => {
+  if (!isTouchTracking || !mobileMediaQuery.matches) return;
 
-  const sliderWidth = Math.max(slider.clientWidth, 1);
-  const threshold = Math.min(120, sliderWidth * 0.2);
+  isTouchTracking = false;
 
-  isTouchDragging = false;
+  if (!isHorizontalSwipe) return;
 
-  if (!isHorizontalSwipe) {
-    return;
+  const swipeThreshold = Math.min(95, Math.max(45, window.innerWidth * 0.12));
+
+  if (Math.abs(touchDeltaX) < swipeThreshold) return;
+
+  if (touchDeltaX < 0) {
+    goToNext();
+  } else {
+    goToPrev();
   }
-
-  const resistedDeltaX = applySwipeResistance(touchRawDeltaX);
-
-  if (Math.abs(resistedDeltaX) < 5) {
-    return;
-  }
-
-  if (Math.abs(touchRawDeltaX) < threshold) {
-    return;
-  }
-
-  const direction = touchRawDeltaX < 0 ? 1 : -1;
-  animateToSlide(getWrappedIndex(currentIndex + direction), direction);
 });
 
-slider.addEventListener('touchcancel', () => {
-  isTouchDragging = false;
+catalogStage.addEventListener('touchcancel', () => {
+  isTouchTracking = false;
   isHorizontalSwipe = false;
 });
 
-document.addEventListener('keydown', (event) => {
-  if (slides.length < 2) return;
-  if (event.key === 'ArrowLeft') animateToSlide(currentIndex - 1, -1);
-  if (event.key === 'ArrowRight') animateToSlide(currentIndex + 1, 1);
-});
-
-rebuildSlidesForViewport(true);
-
 if (typeof mobileMediaQuery.addEventListener === 'function') {
-  mobileMediaQuery.addEventListener('change', () => {
-    rebuildSlidesForViewport();
-  });
+  mobileMediaQuery.addEventListener('change', switchSetForViewport);
 } else if (typeof mobileMediaQuery.addListener === 'function') {
-  mobileMediaQuery.addListener(() => {
-    rebuildSlidesForViewport();
-  });
+  mobileMediaQuery.addListener(switchSetForViewport);
 }
 
 const pointer = {
   x: -1000,
   y: -1000,
-  radius: 120
+  radius: 130
 };
 
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const particleCount = prefersReducedMotion ? 30 : Math.min(90, Math.max(45, Math.floor(window.innerWidth / 14)));
 const particles = [];
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+function getParticleCount() {
+  const area = Math.max(1, particlesCanvas.width * particlesCanvas.height);
+  return Math.min(90, Math.max(34, Math.floor(area / 24000)));
+}
+
+function resizeParticleCanvas() {
+  const rect = catalogStage.getBoundingClientRect();
+  particlesCanvas.width = Math.max(1, Math.floor(rect.width));
+  particlesCanvas.height = Math.max(1, Math.floor(rect.height));
 }
 
 function createParticles() {
   particles.length = 0;
+  const count = getParticleCount();
 
-  for (let i = 0; i < particleCount; i += 1) {
-    const baseVx = (Math.random() - 0.5) * 0.5;
-    const baseVy = (Math.random() - 0.5) * 0.5;
+  for (let i = 0; i < count; i += 1) {
+    const baseVx = (Math.random() - 0.5) * 0.42;
+    const baseVy = (Math.random() - 0.5) * 0.42;
 
     particles.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
+      x: Math.random() * particlesCanvas.width,
+      y: Math.random() * particlesCanvas.height,
       vx: baseVx,
       vy: baseVy,
       baseVx,
       baseVy,
-      size: Math.random() * 2.5 + 1,
-      alpha: Math.random() * 0.25 + 0.2
+      size: Math.random() * 2.6 + 0.8,
+      alpha: Math.random() * 0.45 + 0.3
     });
   }
 }
 
 function updateParticles() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particlesCtx.clearRect(0, 0, particlesCanvas.width, particlesCanvas.height);
 
   particles.forEach((p) => {
     const dx = p.x - pointer.x;
@@ -347,57 +208,62 @@ function updateParticles() {
 
     if (distance > 0 && distance < pointer.radius) {
       const force = (pointer.radius - distance) / pointer.radius;
-      p.vx += (dx / distance) * force * 0.08;
-      p.vy += (dy / distance) * force * 0.08;
+      p.vx += (dx / distance) * force * 0.13;
+      p.vy += (dy / distance) * force * 0.13;
     }
 
-    // Mantem movimento contínuo, puxando suavemente para a velocidade-base.
-    p.vx += (p.baseVx - p.vx) * 0.02 + (Math.random() - 0.5) * 0.01;
-    p.vy += (p.baseVy - p.vy) * 0.02 + (Math.random() - 0.5) * 0.01;
+    p.vx += (p.baseVx - p.vx) * 0.03;
+    p.vy += (p.baseVy - p.vy) * 0.03;
 
     p.x += p.vx;
     p.y += p.vy;
 
-    if (p.x < -20) p.x = canvas.width + 20;
-    if (p.x > canvas.width + 20) p.x = -20;
-    if (p.y < -20) p.y = canvas.height + 20;
-    if (p.y > canvas.height + 20) p.y = -20;
+    if (p.x < -16) p.x = particlesCanvas.width + 16;
+    if (p.x > particlesCanvas.width + 16) p.x = -16;
+    if (p.y < -16) p.y = particlesCanvas.height + 16;
+    if (p.y > particlesCanvas.height + 16) p.y = -16;
 
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(43, 140, 255, ${p.alpha})`;
-    ctx.fill();
+    particlesCtx.beginPath();
+    particlesCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    particlesCtx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+    particlesCtx.fill();
   });
 
   requestAnimationFrame(updateParticles);
 }
 
-canvas.addEventListener('mousemove', (event) => {
-  pointer.x = event.clientX;
-  pointer.y = event.clientY;
+function movePointerWithEvent(clientX, clientY) {
+  const rect = particlesCanvas.getBoundingClientRect();
+  pointer.x = clientX - rect.left;
+  pointer.y = clientY - rect.top;
+}
+
+catalogStage.addEventListener('mousemove', (event) => {
+  movePointerWithEvent(event.clientX, event.clientY);
 });
 
-canvas.addEventListener('mouseleave', () => {
+catalogStage.addEventListener('mouseleave', () => {
   pointer.x = -1000;
   pointer.y = -1000;
 });
 
-canvas.addEventListener('touchmove', (event) => {
+catalogStage.addEventListener('touchmove', (event) => {
   if (!event.touches.length) return;
-  pointer.x = event.touches[0].clientX;
-  pointer.y = event.touches[0].clientY;
+  movePointerWithEvent(event.touches[0].clientX, event.touches[0].clientY);
 }, { passive: true });
 
-canvas.addEventListener('touchend', () => {
+catalogStage.addEventListener('touchend', () => {
   pointer.x = -1000;
   pointer.y = -1000;
 });
 
 window.addEventListener('resize', () => {
-  resizeCanvas();
+  resizeParticleCanvas();
   createParticles();
 });
 
-resizeCanvas();
+resizeParticleCanvas();
 createParticles();
 updateParticles();
+
+updateSlide();

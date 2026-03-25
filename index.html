@@ -3,23 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dark Stairs Slider</title>
+  <title>Dark Stairs | Catálogo</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
-  <main class="slider" aria-label="Galeria de imagens em tela cheia">
-    <div class="slides" id="slides"></div>
+  <main>
+    <section class="home" id="home" aria-label="Página principal">
+      <div class="home__overlay"></div>
+      <div class="home__actions">
+        <button class="home__cta" id="openCatalogBtn" type="button">Ver catálogo</button>
+      </div>
+    </section>
 
-    <canvas id="particles" class="particles" aria-hidden="true"></canvas>
+    <section class="catalog" id="catalog" aria-label="Catálogo em apresentação">
+      <div class="catalog__stage">
+        <button class="catalog__back" id="backBtn" type="button" aria-label="Voltar para a página principal">
+          Voltar
+        </button>
 
-    <button class="nav-arrow nav-arrow--left" id="prevBtn" aria-label="Slide anterior">
-      &#10094;
-    </button>
-    <button class="nav-arrow nav-arrow--right" id="nextBtn" aria-label="Próximo slide">
-      &#10095;
-    </button>
+        <button class="catalog__arrow catalog__arrow--left" id="prevBtn" type="button" aria-label="Imagem anterior">
+          &#10094;
+        </button>
 
-    <div class="bullets" id="bullets" role="tablist" aria-label="Navegação dos slides"></div>
+        <figure class="catalog__figure">
+          <img id="slideImage" src="" alt="Imagem do catálogo" />
+        </figure>
+
+        <canvas class="catalog__particles" id="catalogParticles" aria-hidden="true"></canvas>
+
+        <button class="catalog__arrow catalog__arrow--right" id="nextBtn" type="button" aria-label="Próxima imagem">
+          &#10095;
+        </button>
+      </div>
+      <p class="catalog__counter" id="counter"></p>
+    </section>
   </main>
 
   <script src="./script.js"></script>

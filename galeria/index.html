@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dark Stairs | Galeria</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="gallery" aria-label="Galeria em apresentação">
+    <a class="gallery__back" href="../index.html" aria-label="Voltar para página principal">Voltar</a>
+
+    <section class="gallery__stage" id="galleryStage">
+      <button class="gallery__arrow gallery__arrow--left" id="prevBtn" aria-label="Imagem anterior">
+        &#10094;
+      </button>
+
+      <figure class="gallery__figure" id="slideFigure">
+        <img id="slideImage" src="" alt="Imagem da galeria" />
+      </figure>
+
+      <button class="gallery__arrow gallery__arrow--right" id="nextBtn" aria-label="Próxima imagem">
+        &#10095;
+      </button>
+    </section>
+
+    <p class="gallery__counter" id="counter"></p>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
