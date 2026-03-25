@@ -1,4 +1,4 @@
-const slides = Array.from(document.querySelectorAll('.slide'));
+const slidesContainer = document.getElementById('slides');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
 const bulletsContainer = document.getElementById('bullets');
@@ -6,7 +6,75 @@ const canvas = document.getElementById('particles');
 const slider = document.querySelector('.slider');
 const ctx = canvas.getContext('2d');
 
+const imageSets = {
+  desktop: ['1', '2', '3', '4', '5', '6', '7'],
+  mobile: ['a', 'b', 'c', 'd', 'e', 'f']
+};
+
+const mobileMediaQuery = window.matchMedia('(max-width: 768px)');
+let usingMobileSet = mobileMediaQuery.matches;
+let slides = [];
 let currentIndex = 0;
+
+function isMobileViewport() {
+  return mobileMediaQuery.matches;
+}
+
+function getCurrentImageSet() {
+  return usingMobileSet ? imageSets.mobile : imageSets.desktop;
+}
+
+function buildSlides() {
+  const imageNames = getCurrentImageSet();
+  slidesContainer.innerHTML = '';
+
+  imageNames.forEach((imageName, index) => {
+    const section = document.createElement('section');
+    section.className = `slide ${index === currentIndex ? 'is-active' : ''}`;
+    section.setAttribute('aria-label', `Slide ${index + 1}`);
+
+    const img = document.createElement('img');
+    img.src = `./src/images/${imageName}.png`;
+    img.alt = `Imagem ${imageName.toUpperCase()}`;
+    img.loading = index === 0 ? 'eager' : 'lazy';
+
+    section.appendChild(img);
+    slidesContainer.appendChild(section);
+  });
+
+  slides = Array.from(document.querySelectorAll('.slide'));
+}
+
+function adaptIndexToNewSet(previousLength, previousIndex) {
+  if (!previousLength || !slides.length) {
+    currentIndex = 0;
+    return;
+  }
+
+  if (previousLength === 1) {
+    currentIndex = 0;
+    return;
+  }
+
+  const ratio = previousIndex / (previousLength - 1);
+  currentIndex = Math.round(ratio * (slides.length - 1));
+}
+
+function rebuildSlidesForViewport(force = false) {
+  const nextUseMobileSet = isMobileViewport();
+
+  if (!force && nextUseMobileSet === usingMobileSet) {
+    return;
+  }
+
+  const previousLength = slides.length;
+  const previousIndex = currentIndex;
+
+  usingMobileSet = nextUseMobileSet;
+  buildSlides();
+  adaptIndexToNewSet(previousLength, previousIndex);
+  goToSlide(currentIndex);
+}
 
 function renderBullets() {
   bulletsContainer.innerHTML = '';
@@ -28,6 +96,7 @@ function renderBullets() {
 }
 
 function goToSlide(index) {
+  if (!slides.length) return;
   currentIndex = (index + slides.length) % slides.length;
 
   slides.forEach((slide, i) => {
@@ -40,8 +109,13 @@ function goToSlide(index) {
   renderBullets();
 }
 
-prevBtn.addEventListener('click', () => goToSlide(currentIndex - 1));
-nextBtn.addEventListener('click', () => goToSlide(currentIndex + 1));
+prevBtn.addEventListener('click', () => {
+  if (slides.length > 1) goToSlide(currentIndex - 1);
+});
+
+nextBtn.addEventListener('click', () => {
+  if (slides.length > 1) goToSlide(currentIndex + 1);
+});
 
 let touchStartX = 0;
 let touchCurrentX = 0;
@@ -51,11 +125,8 @@ let isTouchDragging = false;
 let swipeInProgress = false;
 let previewTargetIndex = -1;
 
-function isMobileViewport() {
-  return window.matchMedia('(max-width: 768px)').matches;
-}
-
 function getWrappedIndex(index) {
+  if (!slides.length) return 0;
   return (index + slides.length) % slides.length;
 }
 
@@ -146,7 +217,7 @@ function finalizeSwipe(commitMove, direction, deltaX) {
 }
 
 slider.addEventListener('touchstart', (event) => {
-  if (!isMobileViewport() || swipeInProgress || !event.touches.length) return;
+  if (!isMobileViewport() || slides.length < 2 || swipeInProgress || !event.touches.length) return;
   touchStartX = event.touches[0].clientX;
   touchCurrentX = touchStartX;
   touchRawDeltaX = 0;
@@ -155,7 +226,7 @@ slider.addEventListener('touchstart', (event) => {
 }, { passive: true });
 
 slider.addEventListener('touchmove', (event) => {
-  if (!isTouchDragging || !isMobileViewport() || !event.touches.length) return;
+  if (!isTouchDragging || slides.length < 2 || !isMobileViewport() || !event.touches.length) return;
 
   touchCurrentX = event.touches[0].clientX;
   touchRawDeltaX = touchCurrentX - touchStartX;
@@ -166,7 +237,7 @@ slider.addEventListener('touchmove', (event) => {
 }, { passive: true });
 
 slider.addEventListener('touchend', () => {
-  if (!isTouchDragging || !isMobileViewport() || swipeInProgress) return;
+  if (!isTouchDragging || slides.length < 2 || !isMobileViewport() || swipeInProgress) return;
 
   const sliderWidth = Math.max(slider.clientWidth, 1);
   const threshold = Math.min(120, sliderWidth * 0.2);
@@ -186,11 +257,22 @@ slider.addEventListener('touchend', () => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (slides.length < 2) return;
   if (event.key === 'ArrowLeft') goToSlide(currentIndex - 1);
   if (event.key === 'ArrowRight') goToSlide(currentIndex + 1);
 });
 
-renderBullets();
+rebuildSlidesForViewport(true);
+
+if (typeof mobileMediaQuery.addEventListener === 'function') {
+  mobileMediaQuery.addEventListener('change', () => {
+    rebuildSlidesForViewport();
+  });
+} else if (typeof mobileMediaQuery.addListener === 'function') {
+  mobileMediaQuery.addListener(() => {
+    rebuildSlidesForViewport();
+  });
+}
 
 const pointer = {
   x: -1000,
