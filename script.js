@@ -119,9 +119,13 @@ nextBtn.addEventListener('click', () => {
 
 let touchStartX = 0;
 let touchCurrentX = 0;
+let touchStartY = 0;
+let touchCurrentY = 0;
 let touchRawDeltaX = 0;
+let touchRawDeltaY = 0;
 let touchPreviewDeltaX = 0;
 let isTouchDragging = false;
+let isHorizontalSwipe = false;
 let swipeInProgress = false;
 let previewTargetIndex = -1;
 
@@ -220,8 +224,12 @@ slider.addEventListener('touchstart', (event) => {
   if (!isMobileViewport() || slides.length < 2 || swipeInProgress || !event.touches.length) return;
   touchStartX = event.touches[0].clientX;
   touchCurrentX = touchStartX;
+  touchStartY = event.touches[0].clientY;
+  touchCurrentY = touchStartY;
   touchRawDeltaX = 0;
+  touchRawDeltaY = 0;
   touchPreviewDeltaX = 0;
+  isHorizontalSwipe = false;
   isTouchDragging = true;
 }, { passive: true });
 
@@ -229,12 +237,33 @@ slider.addEventListener('touchmove', (event) => {
   if (!isTouchDragging || slides.length < 2 || !isMobileViewport() || !event.touches.length) return;
 
   touchCurrentX = event.touches[0].clientX;
+  touchCurrentY = event.touches[0].clientY;
   touchRawDeltaX = touchCurrentX - touchStartX;
+  touchRawDeltaY = touchCurrentY - touchStartY;
+
+  if (!isHorizontalSwipe) {
+    const absX = Math.abs(touchRawDeltaX);
+    const absY = Math.abs(touchRawDeltaY);
+
+    if (absX < 6 && absY < 6) {
+      return;
+    }
+
+    if (absX <= absY) {
+      return;
+    }
+
+    isHorizontalSwipe = true;
+  }
+
+  // Evita o gesto nativo de voltar/avançar da página durante o swipe horizontal do slider.
+  event.preventDefault();
+
   if (Math.abs(touchRawDeltaX) < 5) return;
 
   touchPreviewDeltaX = applySwipeResistance(touchRawDeltaX);
   updateTouchPreview(touchPreviewDeltaX);
-}, { passive: true });
+}, { passive: false });
 
 slider.addEventListener('touchend', () => {
   if (!isTouchDragging || slides.length < 2 || !isMobileViewport() || swipeInProgress) return;
@@ -243,6 +272,12 @@ slider.addEventListener('touchend', () => {
   const threshold = Math.min(120, sliderWidth * 0.2);
 
   isTouchDragging = false;
+
+  if (!isHorizontalSwipe) {
+    previewTargetIndex = -1;
+    clearSlideInlineState();
+    return;
+  }
 
   if (Math.abs(touchRawDeltaX) < 5) {
     previewTargetIndex = -1;
@@ -254,6 +289,13 @@ slider.addEventListener('touchend', () => {
   const commitMove = Math.abs(touchRawDeltaX) >= threshold;
   swipeInProgress = true;
   finalizeSwipe(commitMove, direction, touchPreviewDeltaX);
+});
+
+slider.addEventListener('touchcancel', () => {
+  isTouchDragging = false;
+  isHorizontalSwipe = false;
+  previewTargetIndex = -1;
+  clearSlideInlineState();
 });
 
 document.addEventListener('keydown', (event) => {
