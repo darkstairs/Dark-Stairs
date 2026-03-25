@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dark Stairs Slider</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="slider" aria-label="Galeria de imagens em tela cheia">
+    <div class="slides" id="slides">
+      <section class="slide is-active" aria-label="Slide 1">
+        <img src="./src/images/1.png" alt="Imagem 1" loading="eager" />
+      </section>
+      <section class="slide" aria-label="Slide 2">
+        <img src="./src/images/2.png" alt="Imagem 2" loading="lazy" />
+      </section>
+      <section class="slide" aria-label="Slide 3">
+        <img src="./src/images/3.png" alt="Imagem 3" loading="lazy" />
+      </section>
+      <section class="slide" aria-label="Slide 4">
+        <img src="./src/images/4.png" alt="Imagem 4" loading="lazy" />
+      </section>
+      <section class="slide" aria-label="Slide 5">
+        <img src="./src/images/5.png" alt="Imagem 5" loading="lazy" />
+      </section>
+      <section class="slide" aria-label="Slide 6">
+        <img src="./src/images/6.png" alt="Imagem 6" loading="lazy" />
+      </section>
+      <section class="slide" aria-label="Slide 7">
+        <img src="./src/images/7.png" alt="Imagem 7" loading="lazy" />
+      </section>
+    </div>
+
+    <canvas id="particles" class="particles" aria-hidden="true"></canvas>
+
+    <button class="nav-arrow nav-arrow--left" id="prevBtn" aria-label="Slide anterior">
+      &#10094;
+    </button>
+    <button class="nav-arrow nav-arrow--right" id="nextBtn" aria-label="Próximo slide">
+      &#10095;
+    </button>
+
+    <div class="bullets" id="bullets" role="tablist" aria-label="Navegação dos slides"></div>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
