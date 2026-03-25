@@ -88,58 +88,118 @@ function renderBullets() {
     bullet.setAttribute('aria-selected', index === currentIndex ? 'true' : 'false');
 
     bullet.addEventListener('click', () => {
-      goToSlide(index);
+      animateToSlide(index);
     });
 
     bulletsContainer.appendChild(bullet);
   });
 }
 
-function goToSlide(index) {
-  if (!slides.length) return;
-  currentIndex = (index + slides.length) % slides.length;
-
+function resetSlidesState() {
   slides.forEach((slide, i) => {
+    slide.style.transition = 'none';
     slide.classList.toggle('is-active', i === currentIndex);
     slide.style.transform = '';
     slide.style.opacity = '';
-    slide.style.transition = '';
+    slide.style.zIndex = '';
   });
+}
 
+function goToSlide(index) {
+  if (!slides.length) return;
+  currentIndex = (index + slides.length) % slides.length;
+  resetSlidesState();
   renderBullets();
 }
 
+function getShortestDirection(fromIndex, toIndex) {
+  const forwardDistance = (toIndex - fromIndex + slides.length) % slides.length;
+  const backwardDistance = (fromIndex - toIndex + slides.length) % slides.length;
+  return forwardDistance <= backwardDistance ? 1 : -1;
+}
+
+function animateToSlide(targetIndex, forcedDirection = 0) {
+  if (!slides.length || swipeInProgress) return;
+
+  const nextIndex = (targetIndex + slides.length) % slides.length;
+  if (nextIndex === currentIndex) return;
+
+  swipeInProgress = true;
+
+  const direction = forcedDirection || getShortestDirection(currentIndex, nextIndex);
+  const activeSlide = slides[currentIndex];
+  const targetSlide = slides[nextIndex];
+  const enterOffset = direction > 0 ? '34%' : '-34%';
+  const exitOffset = direction > 0 ? '-24%' : '24%';
+
+  slides.forEach((slide) => {
+    slide.style.transition = 'none';
+    slide.style.transform = '';
+    slide.style.opacity = '';
+    slide.style.zIndex = '';
+    if (slide !== activeSlide && slide !== targetSlide) {
+      slide.classList.remove('is-active');
+    }
+  });
+
+  activeSlide.classList.add('is-active');
+  targetSlide.classList.add('is-active');
+  activeSlide.style.zIndex = '2';
+  targetSlide.style.zIndex = '3';
+
+  activeSlide.style.transform = 'translateX(0) scale(1)';
+  activeSlide.style.opacity = '1';
+  targetSlide.style.transform = `translateX(${enterOffset}) scale(1.06)`;
+  targetSlide.style.opacity = '0.68';
+
+  requestAnimationFrame(() => {
+    const transition = 'transform 0.62s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.48s ease';
+    activeSlide.style.transition = transition;
+    targetSlide.style.transition = transition;
+
+    activeSlide.style.transform = `translateX(${exitOffset}) scale(0.94)`;
+    activeSlide.style.opacity = '0.35';
+    targetSlide.style.transform = 'translateX(0) scale(1)';
+    targetSlide.style.opacity = '1';
+  });
+
+  const finish = () => {
+    currentIndex = nextIndex;
+    resetSlidesState();
+    renderBullets();
+    swipeInProgress = false;
+  };
+
+  let didFinish = false;
+  const safeFinish = () => {
+    if (didFinish) return;
+    didFinish = true;
+    finish();
+  };
+
+  targetSlide.addEventListener('transitionend', safeFinish, { once: true });
+  window.setTimeout(safeFinish, 700);
+}
+
 prevBtn.addEventListener('click', () => {
-  if (slides.length > 1) goToSlide(currentIndex - 1);
+  if (slides.length > 1) animateToSlide(currentIndex - 1, -1);
 });
 
 nextBtn.addEventListener('click', () => {
-  if (slides.length > 1) goToSlide(currentIndex + 1);
+  if (slides.length > 1) animateToSlide(currentIndex + 1, 1);
 });
 
 let touchStartX = 0;
-let touchCurrentX = 0;
 let touchStartY = 0;
-let touchCurrentY = 0;
 let touchRawDeltaX = 0;
 let touchRawDeltaY = 0;
-let touchPreviewDeltaX = 0;
 let isTouchDragging = false;
 let isHorizontalSwipe = false;
 let swipeInProgress = false;
-let previewTargetIndex = -1;
 
 function getWrappedIndex(index) {
   if (!slides.length) return 0;
   return (index + slides.length) % slides.length;
-}
-
-function clearSlideInlineState() {
-  slides.forEach((slide) => {
-    slide.style.transition = '';
-    slide.style.transform = '';
-    slide.style.opacity = '';
-  });
 }
 
 function applySwipeResistance(deltaX) {
@@ -156,79 +216,12 @@ function applySwipeResistance(deltaX) {
   return Math.sign(deltaX) * resistedDelta;
 }
 
-function updateTouchPreview(deltaX) {
-  const direction = deltaX < 0 ? 1 : -1;
-  const sliderWidth = Math.max(slider.clientWidth, 1);
-  const activeSlide = slides[currentIndex];
-  const targetIndex = getWrappedIndex(currentIndex + direction);
-  const targetSlide = slides[targetIndex];
-
-  previewTargetIndex = targetIndex;
-  targetSlide.classList.add('is-active');
-
-  activeSlide.style.transition = 'none';
-  targetSlide.style.transition = 'none';
-  activeSlide.style.opacity = '1';
-  targetSlide.style.opacity = '1';
-  activeSlide.style.transform = `translateX(${deltaX}px) scale(1)`;
-
-  const startOffset = direction > 0 ? sliderWidth : -sliderWidth;
-  targetSlide.style.transform = `translateX(${startOffset + deltaX}px) scale(1)`;
-}
-
-function finalizeSwipe(commitMove, direction, deltaX) {
-  if (previewTargetIndex < 0) return;
-
-  const sliderWidth = Math.max(slider.clientWidth, 1);
-  const activeSlide = slides[currentIndex];
-  const targetSlide = slides[previewTargetIndex];
-  const activeFinalX = commitMove ? (direction > 0 ? -sliderWidth : sliderWidth) : 0;
-  const targetStartX = direction > 0 ? sliderWidth + deltaX : -sliderWidth + deltaX;
-  const targetFinalX = commitMove ? 0 : targetStartX;
-
-  activeSlide.style.transition = 'transform 0.32s ease, opacity 0.32s ease';
-  targetSlide.style.transition = 'transform 0.32s ease, opacity 0.32s ease';
-
-  requestAnimationFrame(() => {
-    activeSlide.style.transform = `translateX(${activeFinalX}px) scale(1)`;
-    targetSlide.style.transform = `translateX(${targetFinalX}px) scale(1)`;
-  });
-
-  const finish = () => {
-    if (commitMove) {
-      currentIndex = previewTargetIndex;
-    }
-
-    slides.forEach((slide, index) => {
-      slide.classList.toggle('is-active', index === currentIndex);
-    });
-
-    clearSlideInlineState();
-    renderBullets();
-    previewTargetIndex = -1;
-    swipeInProgress = false;
-  };
-
-  let didFinish = false;
-  const safeFinish = () => {
-    if (didFinish) return;
-    didFinish = true;
-    finish();
-  };
-
-  activeSlide.addEventListener('transitionend', safeFinish, { once: true });
-  window.setTimeout(safeFinish, 380);
-}
-
 slider.addEventListener('touchstart', (event) => {
   if (!isMobileViewport() || slides.length < 2 || swipeInProgress || !event.touches.length) return;
   touchStartX = event.touches[0].clientX;
-  touchCurrentX = touchStartX;
   touchStartY = event.touches[0].clientY;
-  touchCurrentY = touchStartY;
   touchRawDeltaX = 0;
   touchRawDeltaY = 0;
-  touchPreviewDeltaX = 0;
   isHorizontalSwipe = false;
   isTouchDragging = true;
 }, { passive: true });
@@ -236,8 +229,8 @@ slider.addEventListener('touchstart', (event) => {
 slider.addEventListener('touchmove', (event) => {
   if (!isTouchDragging || slides.length < 2 || !isMobileViewport() || !event.touches.length) return;
 
-  touchCurrentX = event.touches[0].clientX;
-  touchCurrentY = event.touches[0].clientY;
+  const touchCurrentX = event.touches[0].clientX;
+  const touchCurrentY = event.touches[0].clientY;
   touchRawDeltaX = touchCurrentX - touchStartX;
   touchRawDeltaY = touchCurrentY - touchStartY;
 
@@ -258,11 +251,6 @@ slider.addEventListener('touchmove', (event) => {
 
   // Evita o gesto nativo de voltar/avançar da página durante o swipe horizontal do slider.
   event.preventDefault();
-
-  if (Math.abs(touchRawDeltaX) < 5) return;
-
-  touchPreviewDeltaX = applySwipeResistance(touchRawDeltaX);
-  updateTouchPreview(touchPreviewDeltaX);
 }, { passive: false });
 
 slider.addEventListener('touchend', () => {
@@ -274,34 +262,32 @@ slider.addEventListener('touchend', () => {
   isTouchDragging = false;
 
   if (!isHorizontalSwipe) {
-    previewTargetIndex = -1;
-    clearSlideInlineState();
     return;
   }
 
-  if (Math.abs(touchRawDeltaX) < 5) {
-    previewTargetIndex = -1;
-    clearSlideInlineState();
+  const resistedDeltaX = applySwipeResistance(touchRawDeltaX);
+
+  if (Math.abs(resistedDeltaX) < 5) {
+    return;
+  }
+
+  if (Math.abs(touchRawDeltaX) < threshold) {
     return;
   }
 
   const direction = touchRawDeltaX < 0 ? 1 : -1;
-  const commitMove = Math.abs(touchRawDeltaX) >= threshold;
-  swipeInProgress = true;
-  finalizeSwipe(commitMove, direction, touchPreviewDeltaX);
+  animateToSlide(getWrappedIndex(currentIndex + direction), direction);
 });
 
 slider.addEventListener('touchcancel', () => {
   isTouchDragging = false;
   isHorizontalSwipe = false;
-  previewTargetIndex = -1;
-  clearSlideInlineState();
 });
 
 document.addEventListener('keydown', (event) => {
   if (slides.length < 2) return;
-  if (event.key === 'ArrowLeft') goToSlide(currentIndex - 1);
-  if (event.key === 'ArrowRight') goToSlide(currentIndex + 1);
+  if (event.key === 'ArrowLeft') animateToSlide(currentIndex - 1, -1);
+  if (event.key === 'ArrowRight') animateToSlide(currentIndex + 1, 1);
 });
 
 rebuildSlidesForViewport(true);

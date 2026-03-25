@@ -46,6 +46,8 @@ body {
   transform: scale(1.03);
   transition: opacity 0.55s ease, transform 0.65s ease;
   pointer-events: none;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 .slide img {
